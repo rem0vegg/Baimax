@@ -1,24 +1,707 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Child Growth Analyzer</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Child Growth Analyzer Pro</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px;
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 2.5em;
+      margin-bottom: 10px;
+      font-weight: 700;
+    }
+
+    .header p {
+      font-size: 1.1em;
+      opacity: 0.9;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+      padding: 30px;
+    }
+
+    .input-section {
+      background: #f8f9fa;
+      padding: 25px;
+      border-radius: 15px;
+      border: 2px solid #e0e0e0;
+    }
+
+    .input-section h2 {
+      color: #333;
+      margin-bottom: 15px;
+      font-size: 1.5em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .input-section h2::before {
+      content: "📊";
+      font-size: 1.2em;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 300px;
+      padding: 15px;
+      border: 2px solid #ddd;
+      border-radius: 10px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      resize: vertical;
+      transition: border-color 0.3s;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .example-data {
+      margin-top: 10px;
+      padding: 10px;
+      background: #fff3cd;
+      border-radius: 8px;
+      font-size: 0.9em;
+      color: #856404;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    button {
+      flex: 1;
+      padding: 15px 30px;
+      font-size: 1.1em;
+      font-weight: 600;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .btn-predict {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-predict:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-clear {
+      background: #6c757d;
+      color: white;
+    }
+
+    .btn-clear:hover {
+      background: #5a6268;
+    }
+
+    .btn-sample {
+      background: #28a745;
+      color: white;
+    }
+
+    .btn-sample:hover {
+      background: #218838;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    .output-section {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .result-card {
+      background: #f8f9fa;
+      padding: 25px;
+      border-radius: 15px;
+      border: 2px solid #e0e0e0;
+    }
+
+    .result-card h2 {
+      color: #333;
+      margin-bottom: 15px;
+      font-size: 1.5em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .result-card h2::before {
+      content: "🎯";
+      font-size: 1.2em;
+    }
+
+    .prediction-stats {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+      margin-top: 15px;
+    }
+
+    .stat-box {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      border-left: 4px solid #667eea;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-box.highlight {
+      border-left-color: #28a745;
+      background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    }
+
+    .stat-label {
+      font-size: 0.85em;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 5px;
+    }
+
+    .stat-value {
+      font-size: 1.8em;
+      font-weight: 700;
+      color: #333;
+    }
+
+    .stat-unit {
+      font-size: 0.7em;
+      color: #666;
+      font-weight: 400;
+    }
+
+    .stat-change {
+      font-size: 0.9em;
+      margin-top: 5px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .stat-change.positive {
+      color: #28a745;
+    }
+
+    .stat-change.negative {
+      color: #dc3545;
+    }
+
+    .chart-card {
+      background: #f8f9fa;
+      padding: 25px;
+      border-radius: 15px;
+      border: 2px solid #e0e0e0;
+      height: 400px;
+    }
+
+    .chart-card h2 {
+      color: #333;
+      margin-bottom: 15px;
+      font-size: 1.5em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .chart-card h2::before {
+      content: "📈";
+      font-size: 1.2em;
+    }
+
+    .chart-container {
+      position: relative;
+      height: calc(100% - 50px);
+    }
+
+    .error-message {
+      background: #f8d7da;
+      color: #721c24;
+      padding: 15px;
+      border-radius: 10px;
+      border-left: 4px solid #dc3545;
+      margin-top: 15px;
+    }
+
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .loading.active {
+      display: block;
+    }
+
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #667eea;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .info-badge {
+      display: inline-block;
+      background: #667eea;
+      color: white;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 0.85em;
+      font-weight: 600;
+      margin-top: 10px;
+    }
+
+    @media (max-width: 1024px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
 </head>
 <body>
-  <h2>Child Growth Analysis</h2>
+  <div class="container">
+    <div class="header">
+      <h1>🚀 Child Growth Analyzer Pro</h1>
+      <p>Advanced LSTM-based Growth Prediction with Interactive Visualization</p>
+    </div>
 
-  <textarea id="input" rows="10">
+    <div class="content">
+      <!-- Input Section -->
+      <div class="input-section">
+        <h2>Input Growth History</h2>
+        <textarea id="input" placeholder='Enter growth data in JSON format...
+Example:
 [
-  {"age_month":36,"height_z":-1.2,"weight_z":-0.8},
-  {"age_month":42,"height_z":-1.5,"weight_z":-1.0},
-  {"age_month":48,"height_z":-1.9,"weight_z":-1.4}
-]
-  </textarea>
+  {"age_month": 60, "height_cm": 108.7, "weight_kg": 16.8},
+  {"age_month": 61, "height_cm": 109.2, "weight_kg": 17.0},
+  ...
+]'></textarea>
+        
+        <div class="example-data">
+          💡 <strong>Tip:</strong> Need at least 7 data points for prediction. Use "Load Sample" to see an example.
+        </div>
 
-  <button onclick="analyze()">Analyze</button>
+        <div class="button-group">
+          <button class="btn-predict" onclick="analyze()">🔮 Predict Growth</button>
+          <button class="btn-sample" onclick="loadSample()">📋 Load Sample</button>
+          <button class="btn-clear" onclick="clearAll()">🗑️ Clear</button>
+        </div>
 
-  <pre id="result"></pre>
+        <div id="loading" class="loading">
+          <div class="spinner"></div>
+          <p style="margin-top: 10px; color: #666;">Analyzing growth patterns...</p>
+        </div>
+      </div>
 
-  <script src="app.js"></script>
+      <!-- Output Section -->
+      <div class="output-section">
+        <div class="result-card" id="resultCard" style="display: none;">
+          <h2>Prediction Results</h2>
+          <div class="prediction-stats" id="predictionStats"></div>
+          <span class="info-badge" id="modelInfo"></span>
+        </div>
+
+        <div class="chart-card">
+          <h2>Growth Trajectory</h2>
+          <div class="chart-container">
+            <canvas id="growthChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let growthChart = null;
+    let currentHistory = [];
+    let prediction = null;
+
+    // Initialize empty chart
+    function initChart() {
+      const ctx = document.getElementById('growthChart').getContext('2d');
+      
+      if (growthChart) {
+        growthChart.destroy();
+      }
+
+      growthChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          datasets: []
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: 'index',
+            intersect: false,
+          },
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: {
+                usePointStyle: true,
+                padding: 15,
+                font: {
+                  size: 12,
+                  weight: 'bold'
+                }
+              }
+            },
+            tooltip: {
+              backgroundColor: 'rgba(0, 0, 0, 0.8)',
+              padding: 12,
+              titleFont: {
+                size: 14,
+                weight: 'bold'
+              },
+              bodyFont: {
+                size: 13
+              },
+              callbacks: {
+                title: function(context) {
+                  return 'Age: ' + context[0].parsed.x + ' months';
+                },
+                label: function(context) {
+                  let label = context.dataset.label || '';
+                  if (label) {
+                    label += ': ';
+                  }
+                  label += context.parsed.y.toFixed(2);
+                  label += context.dataset.label.includes('Height') ? ' cm' : ' kg';
+                  return label;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              type: 'linear',
+              position: 'bottom',
+              title: {
+                display: true,
+                text: 'Age (months)',
+                font: {
+                  size: 14,
+                  weight: 'bold'
+                }
+              },
+              ticks: {
+                stepSize: 1,
+                callback: function(value) {
+                  return Math.round(value);
+                }
+              },
+              grid: {
+                display: true,
+                color: 'rgba(0, 0, 0, 0.05)'
+              }
+            },
+            y: {
+              type: 'linear',
+              title: {
+                display: true,
+                text: 'Measurement',
+                font: {
+                  size: 14,
+                  weight: 'bold'
+                }
+              },
+              grid: {
+                display: true,
+                color: 'rgba(0, 0, 0, 0.05)'
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function updateChart(history, predictionData) {
+      const ages = history.map(d => d.age_month);
+      const heights = history.map(d => d.height_cm);
+      const weights = history.map(d => d.weight_kg);
+
+      let datasets = [
+        {
+          label: 'Height (Historical)',
+          data: ages.map((age, i) => ({x: age, y: heights[i]})),
+          borderColor: '#667eea',
+          backgroundColor: 'rgba(102, 126, 234, 0.1)',
+          borderWidth: 3,
+          pointRadius: 5,
+          pointHoverRadius: 7,
+          tension: 0.4,
+          fill: true
+        },
+        {
+          label: 'Weight (Historical)',
+          data: ages.map((age, i) => ({x: age, y: weights[i]})),
+          borderColor: '#764ba2',
+          backgroundColor: 'rgba(118, 75, 162, 0.1)',
+          borderWidth: 3,
+          pointRadius: 5,
+          pointHoverRadius: 7,
+          tension: 0.4,
+          fill: true
+        }
+      ];
+
+      // Add prediction points
+      if (predictionData) {
+        const predAge = predictionData.predicted_for_age_month;
+        const predHeight = predictionData.predicted_height_cm;
+        const predWeight = predictionData.predicted_weight_kg;
+        const lastAge = ages[ages.length - 1];
+        const lastHeight = heights[heights.length - 1];
+        const lastWeight = weights[weights.length - 1];
+
+        // Height prediction line
+        datasets.push({
+          label: 'Height (Predicted)',
+          data: [
+            {x: lastAge, y: lastHeight},
+            {x: predAge, y: predHeight}
+          ],
+          borderColor: '#28a745',
+          backgroundColor: 'rgba(40, 167, 69, 0.1)',
+          borderWidth: 3,
+          borderDash: [10, 5],
+          pointRadius: 8,
+          pointHoverRadius: 10,
+          pointStyle: 'star',
+          tension: 0
+        });
+
+        // Weight prediction line
+        datasets.push({
+          label: 'Weight (Predicted)',
+          data: [
+            {x: lastAge, y: lastWeight},
+            {x: predAge, y: predWeight}
+          ],
+          borderColor: '#ffc107',
+          backgroundColor: 'rgba(255, 193, 7, 0.1)',
+          borderWidth: 3,
+          borderDash: [10, 5],
+          pointRadius: 8,
+          pointHoverRadius: 10,
+          pointStyle: 'star',
+          tension: 0
+        });
+      }
+
+      growthChart.data.datasets = datasets;
+      growthChart.update();
+    }
+
+    function displayPrediction(data) {
+      const resultCard = document.getElementById('resultCard');
+      const statsDiv = document.getElementById('predictionStats');
+      const modelInfo = document.getElementById('modelInfo');
+
+      resultCard.style.display = 'block';
+
+      const lastHeight = data.last_recorded_height;
+      const lastWeight = data.last_recorded_weight;
+      const predHeight = data.predicted_height_cm;
+      const predWeight = data.predicted_weight_kg;
+
+      const heightChange = predHeight - lastHeight;
+      const weightChange = predWeight - lastWeight;
+
+      statsDiv.innerHTML = `
+        <div class="stat-box">
+          <div class="stat-label">Predicted Age</div>
+          <div class="stat-value">${data.predicted_for_age_month} <span class="stat-unit">months</span></div>
+        </div>
+
+        <div class="stat-box">
+          <div class="stat-label">Last Recorded</div>
+          <div class="stat-value">${data.input_sequence_length} <span class="stat-unit">points</span></div>
+        </div>
+
+        <div class="stat-box highlight">
+          <div class="stat-label">Predicted Height</div>
+          <div class="stat-value">${predHeight} <span class="stat-unit">cm</span></div>
+          <div class="stat-change ${heightChange >= 0 ? 'positive' : 'negative'}">
+            ${heightChange >= 0 ? '▲' : '▼'} ${Math.abs(heightChange).toFixed(2)} cm
+          </div>
+        </div>
+
+        <div class="stat-box highlight">
+          <div class="stat-label">Predicted Weight</div>
+          <div class="stat-value">${predWeight} <span class="stat-unit">kg</span></div>
+          <div class="stat-change ${weightChange >= 0 ? 'positive' : 'negative'}">
+            ${weightChange >= 0 ? '▲' : '▼'} ${Math.abs(weightChange).toFixed(2)} kg
+          </div>
+        </div>
+      `;
+
+      modelInfo.textContent = `Model: Growth LSTM Optimized | Sequence Length: ${data.input_sequence_length}`;
+    }
+
+    function showError(message, detail) {
+      const resultCard = document.getElementById('resultCard');
+      const statsDiv = document.getElementById('predictionStats');
+      
+      resultCard.style.display = 'block';
+      statsDiv.innerHTML = `
+        <div class="error-message" style="grid-column: 1 / -1;">
+          <strong>❌ Error:</strong> ${message}
+          ${detail ? `<br><small>${detail}</small>` : ''}
+        </div>
+      `;
+    }
+
+    async function analyze() {
+      try {
+        const input = document.getElementById('input').value.trim();
+        
+        if (!input) {
+          showError('Please enter growth history data');
+          return;
+        }
+
+        const history = JSON.parse(input);
+        
+        if (!Array.isArray(history) || history.length < 7) {
+          showError('Need at least 7 data points for prediction');
+          return;
+        }
+
+        // Validate data format
+        const requiredFields = ['age_month', 'height_cm', 'weight_kg'];
+        for (const record of history) {
+          for (const field of requiredFields) {
+            if (!(field in record)) {
+              showError(`Missing required field: ${field}`);
+              return;
+            }
+          }
+        }
+
+        currentHistory = history;
+
+        // Show loading
+        document.getElementById('loading').classList.add('active');
+        document.querySelector('.btn-predict').disabled = true;
+
+        const response = await fetch('http://127.0.0.1:8000/predict', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ history })
+        });
+
+        const data = await response.json();
+
+        // Hide loading
+        document.getElementById('loading').classList.remove('active');
+        document.querySelector('.btn-predict').disabled = false;
+
+        if (data.error) {
+          showError(data.error, data.detail);
+          updateChart(history, null);
+        } else {
+          prediction = data;
+          displayPrediction(data);
+          updateChart(history, data);
+        }
+
+      } catch (error) {
+        document.getElementById('loading').classList.remove('active');
+        document.querySelector('.btn-predict').disabled = false;
+        showError('Invalid JSON format or network error', error.message);
+        console.error('Error:', error);
+      }
+    }
+
+    function loadSample() {
+      const sample = [
+        {"age_month": 54, "height_cm": 105.5, "weight_kg": 16.2},
+        {"age_month": 55, "height_cm": 106.1, "weight_kg": 16.4},
+        {"age_month": 56, "height_cm": 106.7, "weight_kg": 16.5},
+        {"age_month": 57, "height_cm": 107.2, "weight_kg": 16.6},
+        {"age_month": 58, "height_cm": 107.8, "weight_kg": 16.7},
+        {"age_month": 59, "height_cm": 108.3, "weight_kg": 16.75},
+        {"age_month": 60, "height_cm": 108.7, "weight_kg": 16.8}
+      ];
+      
+      document.getElementById('input').value = JSON.stringify(sample, null, 2);
+      currentHistory = sample;
+      updateChart(sample, null);
+    }
+
+    function clearAll() {
+      document.getElementById('input').value = '';
+      document.getElementById('resultCard').style.display = 'none';
+      currentHistory = [];
+      prediction = null;
+      initChart();
+    }
+
+    // Initialize on load
+    window.addEventListener('load', () => {
+      initChart();
+      loadSample();
+    });
+  </script>
 </body>
 </html>
