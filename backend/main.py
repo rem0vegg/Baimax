@@ -288,11 +288,32 @@ def predict(data: dict):
         last_height = float(df["height_cm"].iloc[-1])
         last_weight = float(df["weight_kg"].iloc[-1])
 
-        # Height should not decrease
+        # Height should NEVER decrease (children don't shrink)
         pred_height = max(pred_height, last_height)
 
-        # Weight can decrease slightly (2% tolerance for measurement variance)
-        pred_weight = max(pred_weight, last_weight * 0.98)
+        # Weight should NEVER decrease in growth prediction context
+        # Enforce minimum growth rate based on age
+        current_age = int(df["age_month"].iloc[-1])
+        
+        # Minimum monthly weight gain by age (WHO standards)
+        if current_age <= 6:
+            min_weight_gain = 0.15  # 150g/month for 0-6 months
+        elif current_age <= 12:
+            min_weight_gain = 0.10  # 100g/month for 6-12 months
+        elif current_age <= 24:
+            min_weight_gain = 0.08  # 80g/month for 12-24 months
+        else:
+            min_weight_gain = 0.05  # 50g/month for 24+ months
+        
+        # Calculate expected weight with delta_age
+        age_diffs = df["age_month"].diff().dropna()
+        if len(age_diffs) > 0:
+            delta_age = int(age_diffs.median())
+        else:
+            delta_age = 1
+        
+        min_expected_weight = last_weight + (min_weight_gain * delta_age)
+        pred_weight = max(pred_weight, min_expected_weight)
 
         # Sanity check: predictions within realistic bounds
         pred_height = np.clip(pred_height, 30, 200)
@@ -310,15 +331,41 @@ def predict(data: dict):
         next_age = int(df["age_month"].iloc[-1] + delta_age)
 
         # ------------------------------
-        # 10. Return Prediction
+        # 10. Calculate Growth Metrics
+        # ------------------------------
+        height_change = pred_height - last_height
+        weight_change = pred_weight - last_weight
+        
+        # Calculate predicted BMI
+        pred_bmi = pred_weight / ((pred_height / 100) ** 2)
+        last_bmi = last_weight / ((last_height / 100) ** 2)
+        
+        # Growth velocity
+        height_velocity = height_change / delta_age if delta_age > 0 else 0
+        weight_velocity = weight_change / delta_age if delta_age > 0 else 0
+        
+        # Confidence based on sequence consistency
+        age_consistency = 1.0 - (age_diffs.std() / age_diffs.mean()) if len(age_diffs) > 0 else 0.8
+        confidence = min(max(age_consistency * 100, 50), 95)
+        
+        # ------------------------------
+        # 11. Return Comprehensive Prediction
         # ------------------------------
         return {
             "predicted_for_age_month": next_age,
             "predicted_height_cm": round(pred_height, 2),
             "predicted_weight_kg": round(pred_weight, 2),
+            "predicted_bmi": round(pred_bmi, 2),
             "input_sequence_length": SEQ_LEN,
             "last_recorded_height": round(last_height, 2),
-            "last_recorded_weight": round(last_weight, 2)
+            "last_recorded_weight": round(last_weight, 2),
+            "last_bmi": round(last_bmi, 2),
+            "height_change": round(height_change, 2),
+            "weight_change": round(weight_change, 2),
+            "height_velocity": round(height_velocity, 3),
+            "weight_velocity": round(weight_velocity, 3),
+            "confidence_score": round(confidence, 1),
+            "measurement_interval_months": delta_age
         }
 
     except Exception as e:
